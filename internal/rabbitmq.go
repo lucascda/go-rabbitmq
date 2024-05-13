@@ -20,6 +20,7 @@ func NewRabbitMQClient(conn *amqp.Connection) (RabbitClient, error) {
 	if err != nil {
 		return RabbitClient{}, nil
 	}
+
 	return RabbitClient{
 		conn: conn,
 		ch:   ch,
@@ -28,4 +29,9 @@ func NewRabbitMQClient(conn *amqp.Connection) (RabbitClient, error) {
 
 func (rc RabbitClient) Close() error {
 	return rc.ch.Close()
+}
+
+func (rc RabbitClient) CreateQueue(queueName string, durable, autodelete bool) error {
+	_, err := rc.ch.QueueDeclare(queueName, durable, autodelete, false, false, nil)
+	return err
 }

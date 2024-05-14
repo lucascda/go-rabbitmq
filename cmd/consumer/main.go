@@ -1,12 +1,14 @@
 package main
 
 import (
-	"fmt"
+	"context"
 	"log"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/lucas_cda/go-rabbitmq/internal"
+	"golang.org/x/sync/errgroup"
 )
 
 func main() {
@@ -42,20 +44,34 @@ func main() {
 		panic(err)
 	}
 
+	ctx := context.Background()
+
 	var blocking chan struct{}
 
-	go func() {
-		for message := range messageBus {
-			log.Println("New message: %v", message)
+	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	defer cancel()
 
-			if err := message.Ack(false); err != nil {
-				log.Println("acknowledge message fail")
-				continue
-			}
-			log.Printf("Acknowledge message %s\n", message.MessageId)
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(10)
+
+	go func() {
+
+		for message := range messageBus {
+			msg := message
+			g.Go(func() error {
+				log.Printf("New message: %v", msg)
+				time.Sleep(10 * time.Second)
+				if err := msg.Ack(false); err != nil {
+					log.Println("ack msg failed")
+					return err
+				}
+				log.Printf("Acknowledged msg %s", message.MessageId)
+				return nil
+
+			})
 		}
 	}()
-
-	fmt.Println("Consuming...")
+	log.Println("consuming...")
 	<-blocking
+
 }

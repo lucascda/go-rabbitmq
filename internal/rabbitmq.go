@@ -48,3 +48,7 @@ func (rc RabbitClient) Send(ctx context.Context, exchange, routingKey string, op
 func (rc RabbitClient) SendTest(exchange, routingKey string, options amqp.Publishing) error {
 	return rc.ch.Publish(exchange, routingKey, true, false, options)
 }
+
+func (rc RabbitClient) Consume(queue, consumer string, autoAck bool) (<-chan amqp.Delivery, error) {
+	return rc.ch.Consume(queue, consumer, autoAck, false, false, false, nil)
+}

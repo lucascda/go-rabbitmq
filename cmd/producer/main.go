@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/lucas_cda/go-rabbitmq/internal"
+	"github.com/rabbitmq/amqp091-go"
 )
 
 func main() {
@@ -42,6 +44,33 @@ func main() {
 	}
 
 	if err := client.CreateQueue("customers_test", false, true); err != nil {
+		panic(err)
+	}
+
+	if err := client.CreateBinding("customers_created", "customers.created.*", "customers_events"); err != nil {
+		panic(err)
+	}
+
+	if err := client.CreateBinding("customers_test", "customers.*", "customers_events"); err != nil {
+		panic(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	if err := client.Send(ctx, "customers_events", "customers.created.us", amqp091.Publishing{
+		ContentType:  "text/plain",
+		DeliveryMode: amqp091.Persistent,
+		Body:         []byte("An cool message"),
+	}); err != nil {
+		panic(err)
+	}
+
+	if err := client.Send(ctx, "customers_events", "customers.test", amqp091.Publishing{
+		ContentType:  "text/plain",
+		DeliveryMode: amqp091.Transient,
+		Body:         []byte("An cool transient message"),
+	}); err != nil {
 		panic(err)
 	}
 
